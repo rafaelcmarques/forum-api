@@ -6,6 +6,7 @@
   "rules": {
     "no-useless-constructor": "off",
     "no-empty-interface": "off"
+
   },
   "env" : {
     "vitest-globals/env": true
