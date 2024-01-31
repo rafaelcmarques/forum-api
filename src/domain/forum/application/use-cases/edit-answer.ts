@@ -3,11 +3,16 @@ import { Answer } from '../../enterprise/entities/answer'
 import { AnswersRepository } from '../repositories/answers-repository'
 import { NotAllowedError } from './errors/not-allowed-error'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
+import { AnswerAttachment } from '../../enterprise/entities/answer-attachment'
+import { UniqueEntityID } from '@/core/entities/unique-entity-id'
+import { AnswerAttachmentsRepository } from '../repositories/answer-attachments-repository'
+import { AnswerAttachmentList } from '../../enterprise/entities/answer-attachment-list'
 
 interface EditAnswersUseCaseRequest {
   authorId: string
   answerId: string
   content: string
+  attachmentsIds: string[]
 }
 
 type EditAnswersUseCaseResponse = Either<
@@ -16,12 +21,16 @@ type EditAnswersUseCaseResponse = Either<
 >
 
 export class EditAnswersUseCase {
-  constructor(private answersRepository: AnswersRepository) {}
+  constructor(
+    private answersRepository: AnswersRepository,
+    private answerAttachmentsRepository: AnswerAttachmentsRepository,
+  ) {}
 
   async execute({
     authorId,
     answerId,
     content,
+    attachmentsIds,
   }: EditAnswersUseCaseRequest): Promise<EditAnswersUseCaseResponse> {
     const answer = await this.answersRepository.findById(answerId)
 
@@ -32,6 +41,24 @@ export class EditAnswersUseCase {
     if (authorId !== answer.authorId.toString()) {
       return left(new NotAllowedError())
     }
+
+    const currentAnswerAttachments =
+      await this.answerAttachmentsRepository.findManyByAnswerId(answerId)
+
+    const answerAttachmentList = new AnswerAttachmentList(
+      currentAnswerAttachments,
+    )
+
+    const answerAttachments = attachmentsIds.map((attachmentId) => {
+      return AnswerAttachment.create({
+        attachmentId: new UniqueEntityID(attachmentId),
+        asnwerId: answer.id,
+      })
+    })
+
+    answerAttachmentList.update(answerAttachments)
+
+    answer.attachments = answerAttachmentList
 
     answer.content = content
 
